@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Table & Tin — Order Food</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#F6F1E7; --ink:#1F1B16; --muted:#6B6358; --tomato:#C8432B; --herb:#3E5B3A; --line:#DDD4C2; --white:#FFFDF8; color-scheme: light; }
+  * { box-sizing: border-box; }
+  :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--paper); color:var(--ink); line-height:1.5; min-height:100%; }
+  button, input, select, textarea { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:3px solid var(--herb); outline-offset:2px; }
+
+  header { position:sticky; top:env(safe-area-inset-top, 0px); z-index:5; background:var(--paper); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:14px 20px; }
+  .brand { font-family:Fraunces, Georgia, serif; font-weight:800; font-size:22px; letter-spacing:-0.01em; }
+  .hdr-right { display:flex; gap:8px; align-items:center; }
+  .cart-btn { background:var(--ink); color:var(--paper); border:0; border-radius:999px; padding:10px 16px; font-weight:600; }
+  .cart-btn span { display:inline-block; min-width:22px; background:var(--tomato); border-radius:999px; padding:0 7px; margin-left:6px; }
+  .btn-small { background:var(--white); border:1px solid var(--ink); border-radius:8px; padding:6px 12px; font-weight:600; font-size:14px; }
+  .btn-small:hover { background:var(--ink); color:var(--paper); }
+
+  .hero { padding:48px 20px 28px; max-width:760px; margin:0 auto; }
+  .hero h1 { font-family:Fraunces, Georgia, serif; font-weight:800; font-size:clamp(38px, 7vw, 60px); line-height:1.02; letter-spacing:-0.02em; margin:0 0 12px; }
+  .hero p { color:var(--muted); margin:0; max-width:46ch; }
+
+  main { max-width:760px; margin:0 auto; padding:0 20px 120px; }
+  .tabs { display:flex; gap:8px; overflow-x:auto; padding:8px 0 20px; scrollbar-width:none; }
+  .tab { background:transparent; border:1px solid var(--line); border-radius:999px; padding:8px 14px; white-space:nowrap; font-size:14px; }
+  .tab[aria-selected="true"] { background:var(--herb); border-color:var(--herb); color:var(--white); }
+  .section-title { font-family:Fraunces, Georgia, serif; font-size:26px; font-weight:600; margin:28px 0 6px; }
+
+  .item { display:grid; grid-template-columns:64px 1fr auto; gap:4px 14px; align-items:start; padding:16px 0; border-bottom:1px solid var(--line); }
+  .item h3 { margin:0; font-size:17px; font-weight:600; }
+  .item p { margin:0; color:var(--muted); font-size:14px; }
+  .item .price { font-weight:600; }
+  .item.unavailable { opacity:0.5; }
+  .thumb { width:64px; height:64px; border-radius:10px; background:var(--line); overflow:hidden; }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .add { background:var(--white); border:1px solid var(--ink); border-radius:8px; padding:6px 14px; font-weight:600; font-size:14px; grid-column:3; justify-self:end; }
+  .add:hover { background:var(--ink); color:var(--paper); }
+  .note { font-size:13px; color:var(--muted); }
+
+  .overlay { position:fixed; inset:0; background:rgba(31,27,22,0.45); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  .overlay.open { display:flex; }
+  .sheet { background:var(--paper); width:100%; max-width:560px; max-height:92vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .sheet.wide { max-width:640px; }
+  @media (min-width:640px) { .overlay { align-items:center; } .sheet { border-radius:18px; } }
+  .sheet h2 { font-family:Fraunces, Georgia, serif; font-size:26px; margin:0 0 12px; }
+  .sheet h3 { font-family:Fraunces, Georgia, serif; font-size:20px; margin:28px 0 4px; }
+  .close { float:right; background:none; border:0; font-size:22px; line-height:1; padding:4px; }
+
+  .line { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+  .line strong { display:block; font-weight:600; }
+  .qty { display:inline-flex; align-items:center; gap:10px; margin-top:6px; }
+  .qty button { width:30px; height:30px; border-radius:50%; border:1px solid var(--ink); background:var(--white); font-size:16px; line-height:1; }
+  .total-row { display:flex; justify-content:space-between; font-weight:700; font-size:18px; padding:16px 0; }
+
+  .btn-primary { width:100%; background:var(--tomato); color:var(--white); border:0; border-radius:12px; padding:14px; font-weight:700; font-size:16px; margin-top:8px; }
+  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-ghost { background:transparent; border:1px solid var(--ink); border-radius:12px; padding:12px 16px; font-weight:600; width:100%; margin-top:10px; }
+
+  label { display:block; font-size:14px; font-weight:600; margin:14px 0 6px; }
+  input, select, textarea { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--white); }
+  input[type=checkbox], input[type=file] { width:auto; }
+  textarea { resize:vertical; min-height:70px; }
+  .field-error { color:var(--tomato); font-size:13px; margin-top:4px; min-height:0; }
+  .empty { color:var(--muted); padding:24px 0; text-align:center; }
+  .modal-msg { color:var(--muted); margin:0 0 16px; }
+  .arow { display:grid; grid-template-columns:48px 1fr auto; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); }
+  .arow .thumb { width:48px; height:48px; }
+  .abtns { display:flex; gap:6px; }
+  .imgrow { display:flex; gap:12px; align-items:center; margin-top:8px; }
+  .imgrow img { width:96px; height:96px; object-fit:cover; border-radius:10px; }
+  .row-btns { display:flex; gap:8px; margin-bottom:8px; }
+  .hero.has-banner { background: linear-gradient(rgba(20,16,12,.45), rgba(20,16,12,.45)), var(--banner) center/cover no-repeat; color:#fff; border-radius:18px; margin:16px auto 0; width:calc(100% - 40px); }
+  .hero.has-banner p { color:#F3EEE4; }
+  .hero.has-banner h1 { color:#fff; }
+  .tab:hover { border-color: var(--ink); }
+  #search { margin-bottom:8px; }
+  .order { border:1px solid var(--line); border-radius:12px; padding:14px; margin:10px 0; background:var(--white); }
+  .order-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:4px 0; }
+  .order-items { margin:6px 0; padding-left:18px; font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand" id="brand">Table &amp; Tin</div>
+  <div class="hdr-right">
+    <button class="btn-small" id="trackBtn">Track order</button>
+    <button class="btn-small" id="adminBtn" hidden>Admin</button>
+    <button class="cart-btn" id="openCart" aria-label="Open cart">Cart<span id="cartCount">0</span></button>
+  </div>
+</header>
+
+<section class="hero" id="hero">
+  <h1 id="heroTitle">Dinner, ordered.</h1>
+  <p id="heroTag">Pick your dishes, check out in under a minute. Delivered hot to your door.</p>
+</section>
+
+<main>
+  <div id="closedNote" class="field-error" hidden style="font-size:15px;margin:0 0 12px"></div>
+  <input id="search" placeholder="Search food" aria-label="Search food">
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+  <div id="menu"></div>
+</main>
+
+<!-- Cart and checkout -->
+<div class="overlay" id="cartOverlay" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+  <div class="sheet">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="cartTitle">Your order</h2>
+    <div id="cartLines"></div>
+    <div class="total-row"><span>Total</span><span id="cartTotal">GH₵ 0.00</span></div>
+    <div id="checkoutForm" hidden>
+      <form id="orderForm" novalidate>
+        <label for="fName">Full name</label>
+        <input id="fName" autocomplete="name">
+        <div class="field-error" id="errName"></div>
+        <label for="fPhone">Phone number</label>
+        <input id="fPhone" type="tel" autocomplete="tel">
+        <div class="field-error" id="errPhone"></div>
+        <label for="fAddress">Location (nearest landmark)</label>
+        <textarea id="fAddress" autocomplete="off" placeholder="e.g. Opposite the Nima Mosque, blue gate"></textarea>
+        <div class="field-error" id="errAddress"></div>
+        <label for="fPay">Payment</label>
+        <select id="fPay">
+          <option value="cash">Cash on delivery</option>
+          <option value="momo">Mobile money on delivery</option>
+        </select>
+        <label for="fNote">Note for the kitchen (optional)</label>
+        <textarea id="fNote"></textarea>
+      </form>
+      <button class="btn-primary" id="placeOrder">Place order</button>
+      <button class="btn-ghost" id="backToCart">Back to menu</button>
+    </div>
+    <div id="cartActions">
+      <button class="btn-primary" id="goCheckout">Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer order tracking -->
+<div class="overlay" id="trackOverlay" role="dialog" aria-modal="true" aria-labelledby="trackTitle">
+  <div class="sheet" style="max-width:420px">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="trackTitle">Track your order</h2>
+    <label for="trackId">Order ID</label>
+    <input id="trackId" placeholder="e.g. TT-4821" autocomplete="off">
+    <button class="btn-primary" id="trackGo">Check status</button>
+    <div id="trackResult" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<!-- Admin login -->
+<div class="overlay" id="loginOverlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <div class="sheet" style="max-width:420px">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="loginTitle">Admin login</h2>
+    <label for="loginUser">Username</label>
+    <input id="loginUser" autocomplete="username">
+    <label for="loginPass">Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password">
+    <div class="field-error" id="loginErr"></div>
+    <button class="btn-primary" id="loginBtn">Log in</button>
+  </div>
+</div>
+
+<!-- Admin panel -->
+<div class="overlay" id="adminOverlay" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+  <div class="sheet wide">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="adminTitle">Admin</h2>
+    <div class="row-btns">
+      <button class="btn-small" id="newItem">+ New food</button>
+      <button class="btn-small" id="logout">Log out</button>
+    </div>
+    <div id="adminList"></div>
+
+    <div id="editor" hidden>
+      <h3 id="editorTitle">New food</h3>
+      <label for="eName">Title</label>
+      <input id="eName">
+      <label for="eCat">Category</label>
+      <input id="eCat" list="catList">
+      <datalist id="catList"></datalist>
+      <label for="ePrice">Price (GH₵)</label>
+      <input id="ePrice" type="number" min="0" step="0.5">
+      <label for="eDesc">Description</label>
+      <textarea id="eDesc"></textarea>
+      <label for="eImg">Image</label>
+      <input id="eImg" type="file" accept="image/*">
+      <div class="imgrow">
+        <img id="ePreview" alt="" hidden>
+        <button class="btn-small" id="eRemoveImg" type="button">Remove image</button>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center"><input id="eAvail" type="checkbox"> Available today</label>
+      <div class="field-error" id="eErr"></div>
+      <button class="btn-primary" id="eSave">Save food</button>
+      <button class="btn-ghost" id="eCancel">Cancel</button>
+    </div>
+
+    <h3>Site settings</h3>
+    <label for="sName">Site name</label>
+    <input id="sName">
+    <label for="sTag">Headline</label>
+    <input id="sTag">
+    <label for="sFee">Delivery fee (GH₵)</label>
+    <input id="sFee" type="number" min="0" step="0.5">
+    <label for="sTheme">Design</label>
+    <select id="sTheme">
+      <option value="classic">Classic paper</option>
+      <option value="midnight">Midnight</option>
+      <option value="fresh">Fresh green</option>
+      <option value="sunset">Sunset</option>
+    </select>
+    <label for="sBanner">Hero banner image (optional)</label>
+    <input id="sBanner" type="file" accept="image/*">
+    <button class="btn-small" id="sRemoveBanner" type="button" style="margin-top:8px">Remove banner</button>
+    <label style="display:flex;gap:8px;align-items:center"><input id="sOpen" type="checkbox"> Accepting orders</label>
+    <div class="field-error" id="sErr"></div>
+    <button class="btn-primary" id="sSave">Save settings</button>
+
+    <h3>Orders</h3>
+    <div id="orderList"></div>
+
+    <h3>Admin account</h3>
+    <label for="aUser">Username</label>
+    <input id="aUser" autocomplete="off">
+    <label for="aCur">Current password</label>
+    <input id="aCur" type="password" autocomplete="off">
+    <label for="aNew">New password (leave blank to keep)</label>
+    <input id="aNew" type="password" autocomplete="new-password">
+    <label for="aNew2">Confirm new password</label>
+    <input id="aNew2" type="password" autocomplete="new-password">
+    <div class="field-error" id="aErr"></div>
+    <button class="btn-primary" id="aSave">Update account</button>
+  </div>
+</div>
+
+<!-- Generic message and confirm modal (replaces alert/confirm) -->
+<div class="overlay" id="msgOverlay" role="dialog" aria-modal="true" aria-labelledby="msgTitle">
+  <div class="sheet" style="max-width:420px">
+    <h2 id="msgTitle"></h2>
+    <p class="modal-msg" id="msgBody"></p>
+    <button class="btn-primary" id="msgOk">OK</button>
+    <button class="btn-ghost" id="msgCancel" hidden>Cancel</button>
+  </div>
+</div>
+
+<script>
+const DEFAULT_MENU = [
+  { id: "m1", category: "Mains", name: "Jollof & Grilled Chicken", desc: "Smoky party jollof, charred chicken, kachumbari.", price: 65, available: true, image: "" },
+  { id: "m2", category: "Mains", name: "Waakye Special", desc: "Rice and beans, gari, stew, spaghetti, egg and fish.", price: 45, available: true, image: "" },
+  { id: "m3", category: "Mains", name: "Banku & Tilapia", desc: "Fermented corn dough with pepper sauce and grilled tilapia.", price: 70, available: true, image: "" },
+  { id: "m4", category: "Mains", name: "Veggie Fried Rice", desc: "Stir-fried rice, carrot, peas, sweet corn, scrambled egg.", price: 40, available: false, image: "" },
+  { id: "s1", category: "Sides", name: "Plantain (ripe)", desc: "Fried until caramelised, served with pepper.", price: 12, available: true, image: "" },
+  { id: "s2", category: "Sides", name: "Yam Fries", desc: "Crisp outside, soft inside, with garlic mayo.", price: 18, available: true, image: "" },
+  { id: "d1", category: "Drinks", name: "Sobolo", desc: "Chilled hibiscus drink with ginger and pineapple.", price: 15, available: true, image: "" },
+  { id: "d2", category: "Drinks", name: "Bottled Water", desc: "500 ml.", price: 4, available: true, image: "" }
+];
+let DELIVERY_FEE = 10;
+let SETTINGS = null;
+const DEFAULT_SETTINGS = { name: "Table & Tin", tagline: "Dinner, ordered.", fee: 10, open: true, theme: "classic", banner: "" };
+const STATUSES = ["New", "Preparing", "Out for delivery", "Delivered"];
+const THEMES = {
+  classic: { paper: "#F6F1E7", ink: "#1F1B16", muted: "#6B6358", tomato: "#C8432B", herb: "#3E5B3A", line: "#DDD4C2", white: "#FFFDF8" },
+  midnight: { paper: "#14171F", ink: "#F2EEE6", muted: "#9AA0AE", tomato: "#E8794A", herb: "#5E8BD1", line: "#2C3240", white: "#1C2130" },
+  fresh: { paper: "#F3F8F1", ink: "#14211A", muted: "#5C6E62", tomato: "#E0603A", herb: "#2F7D57", line: "#CFE0D2", white: "#FFFFFF" },
+  sunset: { paper: "#FFF4E6", ink: "#3A1E14", muted: "#8A6A5A", tomato: "#D9432F", herb: "#B5562A", line: "#F0D6BC", white: "#FFFBF5" }
+};
+const DEFAULT_USER = "AKATI";
+const DEFAULT_PASS = "123Akati@";
+
+const $ = id => document.getElementById(id);
+const fmt = n => "GH₵ " + Number(n).toFixed(2);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+let MENU = load("tt_menu", DEFAULT_MENU);
+let ORDERS = load("tt_orders", []);
+let itemIndex = {};
+const cart = {};
+let isAdmin = false;
+let editingId = null;
+let pendingImage = "";
+
+function buildIndex() { itemIndex = {}; MENU.forEach(i => itemIndex[i.id] = i); }
+
+function applySettings() {
+  const t = THEMES[SETTINGS.theme] || THEMES.classic;
+  const s = document.documentElement.style;
+  Object.entries(t).forEach(([k, v]) => s.setProperty("--" + k, v));
+  DELIVERY_FEE = SETTINGS.fee;
+  document.title = SETTINGS.name + " — Order Food";
+  $("brand").textContent = SETTINGS.name;
+  $("heroTitle").textContent = SETTINGS.tagline;
+  $("hero").classList.toggle("has-banner", !!SETTINGS.banner);
+  $("hero").style.setProperty("--banner", SETTINGS.banner ? `url("${SETTINGS.banner}")` : "none");
+  $("goCheckout").disabled = !SETTINGS.open;
+  $("closedNote").hidden = SETTINGS.open;
+  $("closedNote").textContent = "We're not taking orders right now. Please check back soon.";
+  renderCart();
+}
+
+function renderOrders() {
+  $("orderList").innerHTML = ORDERS.map((o, idx) => `
+    <div class="order">
+      <div class="order-head"><strong>${esc(o.no)}</strong><span class="note">${esc(o.date)}</span></div>
+      <div class="note">${esc(o.customer.name)} · ${esc(o.customer.phone)}<br>${esc(o.customer.address)}</div>
+      <ul class="order-items">${o.items.map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("")}</ul>
+      ${o.customer.note ? `<div class="note">Note: ${esc(o.customer.note)}</div>` : ""}
+      ${o.approved ? '<div class="note">Approved. Customers can see the status.</div>' : `<button class="btn-primary" data-approve="${idx}">Approve order</button>`}
+      <div class="order-head"><strong>${fmt(o.total)}</strong>
+        <select data-status="${idx}" style="width:auto">${STATUSES.map(s => `<option ${s === o.status ? "selected" : ""}>${s}</option>`).join("")}</select>
+      </div>
+      <button class="btn-small" data-delorder="${idx}">Delete order</button>
+    </div>`).join("") || '<div class="empty">No orders yet.</div>';
+  document.querySelectorAll("[data-status]").forEach(s => s.onchange = () => {
+    ORDERS[s.dataset.status].status = s.value;
+    store("tt_orders", ORDERS);
+  });
+}
+
+function confirmDeleteOrder(idx) {
+  showMessage("Delete order?", `Order ${ORDERS[idx].no} will be removed.`, {
+    ok: "Delete",
+    onOk: () => { ORDERS.splice(idx, 1); store("tt_orders", ORDERS); renderOrders(); },
+    onCancel: () => {}
+  });
+}
+
+function approveOrder(idx) {
+  ORDERS[idx].approved = true;
+  store("tt_orders", ORDERS);
+  renderOrders();
+}
+
+function openTrack() {
+  $("trackId").value = "";
+  $("trackResult").innerHTML = "";
+  $("trackOverlay").classList.add("open");
+  $("trackId").focus();
+}
+
+function checkTrack() {
+  const id = $("trackId").value.trim().toUpperCase();
+  const o = ORDERS.find(x => x.no === id);
+  let html;
+  if (!id) html = '<div class="field-error">Enter your order ID.</div>';
+  else if (!o) html = '<div class="field-error">No order found with that ID. Check the ID and try again.</div>';
+  else if (!o.approved) html = `<div class="note">Order ${esc(o.no)} is waiting for the restaurant to approve it. Check back shortly.</div>`;
+  else html = `<strong>Order ${esc(o.no)}</strong><p style="margin:6px 0">Status: <strong>${esc(o.status)}</strong></p><div class="note">Placed ${esc(o.date)}</div>`;
+  $("trackResult").innerHTML = html;
+}
+
+function fillSettings() {
+  $("sName").value = SETTINGS.name;
+  $("sTag").value = SETTINGS.tagline;
+  $("sFee").value = SETTINGS.fee;
+  $("sTheme").value = SETTINGS.theme;
+  $("sOpen").checked = SETTINGS.open;
+  $("sBanner").value = "";
+  $("sErr").textContent = "";
+}
+
+function saveSettings() {
+  const name = $("sName").value.trim();
+  const fee = parseFloat($("sFee").value);
+  if (!name) { $("sErr").textContent = "Enter a site name."; return; }
+  if (isNaN(fee) || fee < 0) { $("sErr").textContent = "Enter a valid delivery fee."; return; }
+  SETTINGS = { ...SETTINGS, name, tagline: $("sTag").value.trim() || DEFAULT_SETTINGS.tagline, fee, theme: $("sTheme").value, open: $("sOpen").checked };
+  store("tt_settings", SETTINGS);
+  applySettings();
+  $("sErr").textContent = "";
+  showMessage("Settings saved", "Your changes are live on the site.");
+}
+function categories() { return [...new Set(MENU.map(i => i.category))]; }
+function thumb(i) { return `<div class="thumb">${i.image ? `<img src="${i.image}" alt="">` : ""}</div>`; }
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function loadCreds() {
+  const c = load("tt_admin_akati", null);
+  return c || { user: DEFAULT_USER, hash: await sha256(DEFAULT_PASS) };
+}
+
+function saveMenu() {
+  store("tt_menu", MENU);
+  buildIndex();
+  Object.keys(cart).forEach(k => { if (!itemIndex[k]) delete cart[k]; });
+  renderAll();
+}
+function renderAll() {
+  renderTabs(); renderMenu(); renderCart(); updateCount();
+  if (isAdmin) { renderAdminList(); renderOrders(); }
+}
+
+function renderTabs() {
+  const tabs = $("tabs");
+  tabs.innerHTML = "";
+  categories().forEach((c, ci) => {
+    const b = document.createElement("button");
+    b.className = "tab";
+    b.setAttribute("role", "tab");
+    b.textContent = c;
+    b.onclick = () => document.getElementById("cat-" + ci).scrollIntoView({ behavior: "smooth", block: "start" });
+    tabs.appendChild(b);
+  });
+}
+
+function renderMenu() {
+  const menu = $("menu");
+  const q = ($("search").value || "").trim().toLowerCase();
+  menu.innerHTML = "";
+  categories().forEach((c, ci) => {
+    const h = document.createElement("h2");
+    h.className = "section-title";
+    h.id = "cat-" + ci;
+    h.textContent = c;
+    menu.appendChild(h);
+    MENU.filter(i => i.category === c && (!q || (i.name + " " + i.desc).toLowerCase().includes(q))).forEach(i => {
+      const row = document.createElement("div");
+      row.className = "item" + (i.available === false ? " unavailable" : "");
+      row.innerHTML = `
+        ${thumb(i)}
+        <div><h3>${esc(i.name)}</h3><p>${esc(i.desc)}</p>${i.available === false ? '<span class="note">Sold out today</span>' : ""}</div>
+        <div class="price">${fmt(i.price)}</div>
+        ${i.available === false ? "" : `<button class="add" data-add="${i.id}">Add</button>`}`;
+      menu.appendChild(row);
+    });
+  });
+}
+
+function renderAdminList() {
+  $("adminList").innerHTML = MENU.map(i => `
+    <div class="arow">
+      ${thumb(i)}
+      <div><strong>${esc(i.name)}</strong><div class="note">${esc(i.category)} · ${fmt(i.price)}${i.available === false ? " · sold out" : ""}</div></div>
+      <div class="abtns">
+        <button class="btn-small" data-edit="${i.id}">Edit</button>
+        <button class="btn-small" data-del="${i.id}">Delete</button>
+      </div>
+    </div>`).join("") || '<div class="empty">No food yet. Add your first item.</div>';
+}
+
+function cartCount() { return Object.values(cart).reduce((a, b) => a + b, 0); }
+function subtotal() { return Object.entries(cart).reduce((s, [id, q]) => s + itemIndex[id].price * q, 0); }
+function updateCount() { $("cartCount").textContent = cartCount(); }
+function addToCart(id) { cart[id] = (cart[id] || 0) + 1; updateCount(); }
+function changeQty(id, d) {
+  cart[id] = (cart[id] || 0) + d;
+  if (cart[id] <= 0) delete cart[id];
+  renderCart(); updateCount();
+}
+
+function renderCart() {
+  const lines = $("cartLines");
+  lines.innerHTML = "";
+  const ids = Object.keys(cart);
+  if (!ids.length) {
+    lines.innerHTML = '<div class="empty">Your cart is empty. Add something tasty from the menu.</div>';
+    $("cartActions").hidden = true;
+    $("cartTotal").textContent = fmt(0);
+    return;
+  }
+  $("cartActions").hidden = false;
+  ids.forEach(id => {
+    const it = itemIndex[id];
+    const row = document.createElement("div");
+    row.className = "line";
+    row.innerHTML = `
+      <div><strong>${esc(it.name)}</strong>${fmt(it.price)} each
+        <div class="qty">
+          <button data-dec="${id}" aria-label="Decrease">&minus;</button>
+          <span>${cart[id]}</span>
+          <button data-inc="${id}" aria-label="Increase">+</button>
+        </div></div>
+      <div>${fmt(it.price * cart[id])}</div>`;
+    lines.appendChild(row);
+  });
+  lines.insertAdjacentHTML("beforeend", `<div class="note" style="padding-top:10px">Delivery fee: ${fmt(DELIVERY_FEE)}</div>`);
+  $("cartTotal").textContent = fmt(subtotal() + DELIVERY_FEE);
+}
+
+function showCheckout(on) {
+  $("checkoutForm").hidden = !on;
+  $("cartLines").hidden = on;
+  $("cartActions").hidden = on || cartCount() === 0;
+  $("cartTitle").textContent = on ? "Checkout" : "Your order";
+}
+
+function validateOrder() {
+  const errs = {
+    errName: $("fName").value.trim() ? "" : "Enter your name.",
+    errPhone: /^[0-9+\s()-]{9,}$/.test($("fPhone").value.trim()) ? "" : "Enter a valid phone number.",
+    errAddress: $("fAddress").value.trim().length >= 5 ? "" : "Enter your location or a nearby landmark."
+  };
+  let ok = true;
+  Object.entries(errs).forEach(([k, v]) => { $(k).textContent = v; if (v) ok = false; });
+  return ok;
+}
+
+function showMessage(title, body, opts = {}) {
+  $("msgTitle").textContent = title;
+  $("msgBody").textContent = body;
+  $("msgOk").textContent = opts.ok || "OK";
+  $("msgCancel").hidden = !opts.onCancel;
+  $("msgOverlay").classList.add("open");
+  $("msgOk").onclick = () => { $("msgOverlay").classList.remove("open"); opts.onOk && opts.onOk(); };
+  $("msgCancel").onclick = () => { $("msgOverlay").classList.remove("open"); opts.onCancel && opts.onCancel(); };
+}
+
+function clearHash() { try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+function closeOverlay(ov) {
+  ov.classList.remove("open");
+  if (ov.id === "adminOverlay" || ov.id === "loginOverlay") clearHash();
+}
+
+function openLogin() {
+  $("loginUser").value = ""; $("loginPass").value = ""; $("loginErr").textContent = "";
+  $("loginOverlay").classList.add("open");
+  $("loginUser").focus();
+}
+
+async function openAdmin() {
+  closeEditor();
+  $("aCur").value = ""; $("aNew").value = ""; $("aNew2").value = ""; $("aErr").textContent = "";
+  $("aUser").value = (await loadCreds()).user;
+  renderAdminList();
+  renderOrders();
+  fillSettings();
+  $("adminOverlay").classList.add("open");
+}
+
+function checkHash() {
+  if (location.hash !== "#admin") return;
+  if (isAdmin) openAdmin(); else openLogin();
+}
+
+// Editor
+function openEditor(item) {
+  editingId = item ? item.id : null;
+  pendingImage = item ? (item.image || "") : "";
+  $("editorTitle").textContent = item ? "Edit food" : "New food";
+  $("eName").value = item ? item.name : "";
+  $("eCat").value = item ? item.category : (categories()[0] || "Mains");
+  $("ePrice").value = item ? item.price : "";
+  $("eDesc").value = item ? item.desc : "";
+  $("eAvail").checked = item ? item.available !== false : true;
+  $("eImg").value = "";
+  $("eErr").textContent = "";
+  $("catList").innerHTML = categories().map(c => `<option value="${esc(c)}">`).join("");
+  setPreview();
+  $("editor").hidden = false;
+  $("editor").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function closeEditor() { editingId = null; pendingImage = ""; $("editor").hidden = true; }
+function setPreview() {
+  $("ePreview").src = pendingImage;
+  $("ePreview").hidden = !pendingImage;
+}
+
+function resizeImage(file, max = 900) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function saveEditor() {
+  const name = $("eName").value.trim();
+  const category = $("eCat").value.trim();
+  const price = parseFloat($("ePrice").value);
+  let err = "";
+  if (!name) err = "Enter a title for this food.";
+  else if (!category) err = "Enter a category.";
+  else if (isNaN(price) || price < 0) err = "Enter a valid price.";
+  $("eErr").textContent = err;
+  if (err) return;
+  const item = {
+    id: editingId || "i" + Date.now(),
+    name, category, price,
+    desc: $("eDesc").value.trim(),
+    available: $("eAvail").checked,
+    image: pendingImage
+  };
+  if (editingId) MENU[MENU.findIndex(i => i.id === editingId)] = item;
+  else MENU.push(item);
+  closeEditor();
+  saveMenu();
+}
+
+function confirmDelete(id) {
+  const it = itemIndex[id];
+  if (!it) return;
+  showMessage("Delete food?", `"${it.name}" will be removed from the menu.`, {
+    ok: "Delete",
+    onOk: () => {
+      MENU = MENU.filter(i => i.id !== id);
+      if (editingId === id) closeEditor();
+      saveMenu();
+    },
+    onCancel: () => {}
+  });
+}
+
+async function saveAccount() {
+  const creds = await loadCreds();
+  const cur = $("aCur").value;
+  const newPass = $("aNew").value;
+  const newUser = $("aUser").value.trim() || creds.user;
+  let err = "";
+  if ((await sha256(cur)) !== creds.hash) err = "Current password is incorrect.";
+  else if (newPass && newPass !== $("aNew2").value) err = "New passwords do not match.";
+  else if (newPass && newPass.length < 6) err = "Use at least 6 characters for the new password.";
+  $("aErr").textContent = err;
+  if (err) return;
+  const hash = newPass ? await sha256(newPass) : creds.hash;
+  store("tt_admin_akati", { user: newUser, hash });
+  $("aCur").value = ""; $("aNew").value = ""; $("aNew2").value = "";
+  showMessage("Account updated", newPass ? "Your username and password are saved." : "Your username is saved.");
+}
+
+async function login() {
+  const creds = await loadCreds();
+  const u = $("loginUser").value.trim();
+  const p = $("loginPass").value;
+  if (u === creds.user && (await sha256(p)) === creds.hash) {
+    isAdmin = true;
+    $("adminBtn").hidden = false;
+    $("loginOverlay").classList.remove("open");
+    clearHash();
+    openAdmin();
+  } else {
+    $("loginErr").textContent = "Wrong username or password.";
+    $("loginPass").value = "";
+  }
+}
+
+function logout() {
+  isAdmin = false;
+  $("adminBtn").hidden = true;
+  closeEditor();
+  closeOverlay($("adminOverlay"));
+}
+
+function placeOrder() {
+  if (!validateOrder()) return;
+  let orderNo;
+  do { orderNo = "TT-" + Math.floor(1000 + Math.random() * 9000); } while (ORDERS.some(o => o.no === orderNo));
+  const total = fmt(subtotal() + DELIVERY_FEE);
+  ORDERS.unshift({
+    no: orderNo, date: new Date().toLocaleString(), status: "New", approved: false, total: subtotal() + DELIVERY_FEE,
+    items: Object.entries(cart).map(([id, q]) => ({ name: itemIndex[id].name, qty: q, price: itemIndex[id].price })),
+    customer: { name: $("fName").value.trim(), phone: $("fPhone").value.trim(), address: $("fAddress").value.trim(), pay: $("fPay").value, note: $("fNote").value.trim() }
+  });
+  store("tt_orders", ORDERS);
+  Object.keys(cart).forEach(k => delete cart[k]);
+  $("orderForm").reset();
+  updateCount();
+  $("cartOverlay").classList.remove("open");
+  showMessage("Order placed", `Your order ID is ${orderNo}. Keep it to check your order status once the restaurant approves it.`);
+}
+
+// Wiring
+$("openCart").onclick = () => { showCheckout(false); renderCart(); $("cartOverlay").classList.add("open"); };
+$("goCheckout").onclick = () => { if (cartCount()) { showCheckout(true); $("fName").focus(); } };
+$("backToCart").onclick = () => showCheckout(false);
+$("placeOrder").onclick = placeOrder;
+$("loginBtn").onclick = login;
+$("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+$("adminBtn").onclick = openAdmin;
+$("logout").onclick = logout;
+$("newItem").onclick = () => openEditor(null);
+$("eCancel").onclick = closeEditor;
+$("eSave").onclick = saveEditor;
+$("eRemoveImg").onclick = () => { pendingImage = ""; setPreview(); };
+$("eImg").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { pendingImage = await resizeImage(f); setPreview(); }
+  catch (err) { $("eErr").textContent = "That image could not be read. Try another file."; }
+};
+$("aSave").onclick = saveAccount;
+window.addEventListener("hashchange", checkHash);
+$("search").oninput = renderMenu;
+$("sSave").onclick = saveSettings;
+$("trackBtn").onclick = openTrack;
+$("trackGo").onclick = checkTrack;
+$("trackId").addEventListener("keydown", e => { if (e.key === "Enter") checkTrack(); });
+$("sBanner").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { SETTINGS.banner = await resizeImage(f, 1400); store("tt_settings", SETTINGS); applySettings(); }
+  catch (err) { $("sErr").textContent = "That image could not be read."; }
+};
+$("sRemoveBanner").onclick = () => { SETTINGS.banner = ""; store("tt_settings", SETTINGS); applySettings(); };
+
+document.addEventListener("click", e => {
+  const t = e.target;
+  const add = t.closest("[data-add]");
+  if (add) { addToCart(add.dataset.add); return; }
+  const inc = t.closest("[data-inc]");
+  if (inc) { changeQty(inc.dataset.inc, 1); return; }
+  const dec = t.closest("[data-dec]");
+  if (dec) { changeQty(dec.dataset.dec, -1); return; }
+  const ed = t.closest("[data-edit]");
+  if (ed) { openEditor(itemIndex[ed.dataset.edit]); return; }
+  const del = t.closest("[data-del]");
+  if (del) { confirmDelete(del.dataset.del); return; }
+  const dord = t.closest("[data-delorder]");
+  if (dord) { confirmDeleteOrder(+dord.dataset.delorder); return; }
+  const appr = t.closest("[data-approve]");
+  if (appr) { approveOrder(+appr.dataset.approve); return; }
+  const cl = t.closest("[data-close]");
+  if (cl) { closeOverlay(cl.closest(".overlay")); return; }
+  if (t.classList && t.classList.contains("overlay")) closeOverlay(t);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".overlay.open").forEach(closeOverlay);
+});
+
+buildIndex();
+SETTINGS = { ...DEFAULT_SETTINGS, ...load("tt_settings", {}) };
+applySettings();
+renderAll();
+checkHash();
+</script>
+</body>
+</html>
